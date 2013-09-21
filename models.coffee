@@ -58,8 +58,7 @@ class TBDirectory
       matchingFile = list for list in lists when list.name is @directoryName
 
       if matchingFile isnt undefined
-        console.log(matchingFile)
-        console.log("there is an existing list. not creating a duplicate")
+        console.log("#{matchingFile.name} alreday exits on Trello. not creating a duplicate")
         @trelloListObject = matchingFile
         @mapDropboxFiles()
         return
@@ -87,63 +86,83 @@ class TBRoot
     @dropboxRootDirObject = null
     @trelloBoardObject = null
 
+    @trelloLists = null
+
     @trelloListIndex = new Array()
     @dropboxFileIndex = new Array()
 
-  initTrelloBoardObject: ->
+
+  initTrelloBoardObject: (callback) ->
     trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
       boardsWithMatchingName = boards.filter (board) -> 
         board.name is "TrelloBox" and board.closed is false
 
       if boardsWithMatchingName.length == 0
+        callback new Error, null
         throw new Error "No matching board found!" 
       else if boardsWithMatchingName.length > 1
+        callback new Error, null
         throw new Error "More than one matching board found!"
       else
         console.log("found one")
 
       matchingBoard = boardsWithMatchingName[0] 
+     
       @trelloBoardObject = matchingBoard
-      @mapDropboxRoot()
-      @initTrelloReadingList()
+      callback undefined, matchingBoard
     )
 
-  mapDropboxRoot: ->
+
+
+  mapDropboxRoot: (callback) ->
     dropboxClient.readdir("/#{@rootName}", (err, contents) =>
       for content in contents
-        dropboxClient.stat("/#{@rootName}/#{content}", (err, metadata) =>
-          if err
-            console.log(err)
-            return
+        splitCount = content.split(".").length
+        if splitCount is 1
+          tbDir = new TBDirectory(this, content)
+          tbDir.initTrelloList()
+          @tbDirs.push tbDir
+        else
+          @tbFiles.push new TBFile(content)
 
-          if metadata.isFolder
-            tbDir = new TBDirectory(this, metadata.name)
-            tbDir.initTrelloList()
-            @tbDirs.push tbDir
-          else if metadata.isFile
-            @tbFiles.push new TBFile(metadata.name)
-        )
+      callback err, @tbDirs, @tbFiles
     )
 
-  initTrelloReadingList: ->
-    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
+
+
+  allTrelloLists: (boardId, callback) ->
+    trelloClient.get("/1/boards/#{boardId}/lists", (err, lists) =>
       if err
         console.log(err)
         return
 
-      matchingList = list for list in lists when list.name is "Reading List"
+      @trelloLists = lists
+      callback err, lists
+    )
 
-      if matchingList isnt undefined
-        console.log("Reading list already exists.")
-        return
-      trelloClient.post("/1/boards/#{@trelloBoardObject.id}/lists?name=Reading\ List", (err, list) =>
+
+
+  initReservedTrelloList: (listName, boardId, callback) ->
+    if @trelloLists is undefined
+      throw new Error "@trelloLists is not defined"
+      return
+
+    matchingList = list for list in @trelloLists when list.name is listName
+
+    if matchingList isnt undefined
+      console.log("Reserved Trello List #{matchingList} already exists!")
+      return
+    else
+      trelloClient.post("/1/boards/#{@trelloBoardObject.id}/lists?name=#{listName}", (err, list) =>
         if err
           console.log(err)
           return
         
-        console.log(list)
+        console.log("#{listName} has been created")
+        callback err
       )
-    )
+
+
 
   mapAllTBFiles: ->
     trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
@@ -211,7 +230,16 @@ class TBRoot
 
 
   setUpTrello: ->
-    @initTrelloBoardObject()
+    @initTrelloBoardObject((err, boardObject) =>
+      @mapDropboxRoot((err, tbDirs, tbFiles) =>
+      )
+
+      @allTrelloLists(boardObject.id, (err, lists) =>
+        @initReservedTrelloList("Reading List", boardObject.id, (err) ->)
+        @initReservedTrelloList("Favorites", boardObject.id, (err) ->)
+      )
+    )
+    
     # @mapAllTBFiles()
 
 
