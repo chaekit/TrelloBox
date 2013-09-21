@@ -17,7 +17,8 @@ dropboxClient = new Dropbox.Client(
 
 
 root = new TBRoot("TrelloBox")
-root.setUpTrello()
+# root.setUpTrello()
+root.syncTrelloToDropbox()
 
 
 # express = require("express")

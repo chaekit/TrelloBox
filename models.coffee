@@ -3,6 +3,7 @@ dropboxClient = require("./client").dropboxClient(nconf)
 trelloClient = require("./client").trelloClient(nconf)
 async = require 'async'
 
+
 class TBFile
   constructor: (tbDirectory, fileName) ->
     @fileName = fileName
@@ -91,6 +92,8 @@ class TBRoot
     @trelloListIndex = new Array()
     @dropboxFileIndex = new Array()
 
+    @dropboxDirCount = 0
+    @_indexedDropboxCount = 0
 
   initTrelloBoardObject: (callback) ->
     trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
@@ -163,96 +166,128 @@ class TBRoot
       )
 
 
+  indexDropboxDirs: (callback) ->
+    dropboxClient.readdir "/TrelloBox", (err, entries) =>
+      dirs = entries.filter (e) -> e.split(".").length == 1
+      @dropboxDirCount = dirs.length
+
+      callback err, dirs
+    
+
+
+
+  indexSingleDropboxDir: (dirName, callback) ->
+    dropboxClient.readdir("/TrelloBox/#{dirName}", (err, entries) =>
+      files = entries.filter (e) -> e.split(".").length == 2
+      for file in files
+        @dropboxFileIndex[file] = dirName
+        fileIndexSize = Object.keys(@dropboxFileIndex).length
+
+      @_indexedDropboxCount += 1
+      callback(err) if @dropboxDirCount is @_indexedDropboxCount
+    )
+        
+
+
+  indexTrelloLists: (callback, lists) ->
+    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
+      for list in lists
+        @trelloListIndex[list.id] = list.name
+
+      callback err, lists
+    )
+
+
+
+  processTrelloCards: (callback) ->
+    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
+
+      for tbfile in cards
+        tbFileListName = @trelloListIndex[tbfile.idList]
+        tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
+
+        if tbFileListName isnt tbFileDropboxDirName and tbFileDropboxDirName isnt undefined
+          oldDropboxPath = "/TrelloBox/#{tbFileDropboxDirName}/#{tbfile.name}"
+          newDropboxPath = "/TrelloBox/#{tbFileListName}/#{tbfile.name}"
+          dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
+            if err
+              console.log(err)
+              return
+
+            console.log(stat)
+          )
+    )
+
 
   mapAllTBFiles: ->
-    trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
-      boardsWithMatchingName = boards.filter (board) -> 
-        board.name is "TrelloBox" and board.closed is false
+    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
+      console.log("wt")
+      for tbfile in cards
+        tbFileListName = @trelloListIndex[tbfile.idList]
+        tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
 
-      if boardsWithMatchingName.length == 0
-        throw new Error "No matching board found!" 
-      else if boardsWithMatchingName.length > 1
-        throw new Error "More than one matching board found!"
-      else
-        console.log("found one")
+        if tbFileListName isnt tbFileDropboxDirName and tbFileDropboxDirName isnt undefined
+          oldDropboxPath = "/TrelloBox/#{tbFileDropboxDirName}/#{tbfile.name}"
+          newDropboxPath = "/TrelloBox/#{tbFileListName}/#{tbfile.name}"
 
-      matchingBoard = boardsWithMatchingName[0] 
-      @trelloBoardObject = matchingBoard
-
-      dropboxClient.readdir("/TrelloBox", (err, contents) =>
-        for content in contents
-          console.log(content.split("."))
-          if content.split(".").length is 1  # no extension. therefore a directory
-            console.log(content)
-            @syncTrelloToDropbox(content)
-  
-      )
+          dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
+            console.log(stat)
+          )
     )
+
     
-  syncTrelloToDropbox: (content) ->
-    dropboxClient.readdir("/TrelloBox/#{content}", (err, files) =>
-      for file in files
-        console.log(content)
-        if file.split(".").length > 1 
-          @dropboxFileIndex[file] = content
-          fileIndexSize = Object.keys(@dropboxFileIndex).length
-          if fileIndexSize is 3
-            console.log(@dropboxFileIndex)
-            console.log("WTFF")
-            trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists)=>
-              for list in lists
-                @trelloListIndex[list.id] = list.name
-                # console.log(@trelloListIndex)
-                # console.log(@dropboxFileIndex)
+    
+  # syncTrelloToDropbox: (callback) ->
+  #   trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
+  #     boardsWithMatchingName = boards.filter (board) -> 
+  #       board.name is "TrelloBox" and board.closed is false
 
-              trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
-                console.log("wt")
-                for tbfile in cards
-                  tbFileListName = @trelloListIndex[tbfile.idList]
-                  tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
-                  if tbFileListName isnt tbFileDropboxDirName and tbFileDropboxDirName isnt undefined
-                    oldDropboxPath = "/TrelloBox/#{tbFileDropboxDirName}/#{tbfile.name}"
-                    newDropboxPath = "/TrelloBox/#{tbFileListName}/#{tbfile.name}"
-                    dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
-                      if err
-                        console.log(err)
-                        return
+  #     if boardsWithMatchingName.length == 0
+  #       throw new Error "No matching board found!" 
+  #     else if boardsWithMatchingName.length > 1
+  #       throw new Error "More than one matching board found!"
+  #     else
+  #       console.log("found one")
 
-                      console.log(stat)
-                    )
-              )
-            )
-        #   
+  #     matchingBoard = boardsWithMatchingName[0] 
+  #     @trelloBoardObject = matchingBoard
 
-    )
-
+  #     dropboxClient.readdir("/TrelloBox", (err, contents) =>
+  #       for content in contents
+  #         console.log(content.split("."))
+  #         if content.split(".").length is 1  # no extension. therefore a directory
+  #           console.log(content)
+  #           @syncTrelloToDropbox(content)
+  # 
+  #     )
+  #   )
 
 
 
   setUpTrello: ->
     @initTrelloBoardObject((err, boardObject) =>
-      @mapDropboxRoot((err, tbDirs, tbFiles) =>
-      )
+      @mapDropboxRoot((err, tbDirs, tbFiles) =>)
 
       @allTrelloLists(boardObject.id, (err, lists) =>
         @initReservedTrelloList("Reading List", boardObject.id, (err) ->)
         @initReservedTrelloList("Favorites", boardObject.id, (err) ->)
       )
     )
-    
-    # @mapAllTBFiles()
 
+    
+  syncTrelloToDropbox: ->
+    @initTrelloBoardObject((err, boardObject) =>
+      @indexTrelloLists((err, lists) =>
+        @indexDropboxDirs((err, directories) =>
+          for dir in directories
+            @indexSingleDropboxDir(dir, (err) =>
+              @mapAllTBFiles()
+            )
+        )
+      )
+    )
 
 exports.TBRoot = TBRoot
 exports.TBFile = TBFile
 exports.TBDirectory = TBDirectory
-
-# matchinBoardID = matchingBoard.id
-
-# trelloClient.get("/1/boards/#{matchinBoardID}/lists", (err, lists) ->
-#   for list in lists
-#     trelloClient.get("/1/lists/#{list.id}/cards", (err, cards) ->
-#       console.log(cards)
-#     )
-# )
 
