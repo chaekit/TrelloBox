@@ -1,8 +1,12 @@
 nconf = require('nconf').file({ file: "./config.json" })
-dropboxClient = require("./client").dropboxClient(nconf)
-trelloClient = require("./client").trelloClient(nconf)
+apiClient = require("./client")
 async = require 'async'
 
+if process.env.PROJECT_ENV is "TEST"
+  dropboxClient = apiClient.mockDropboxClient()
+else
+  dropboxClient =  apiClient.dropboxClient(nconf)
+  trelloClient = apiClient.trelloClient(nconf)
 
 class TBFile
   constructor: (tbDirectory, fileName) ->
@@ -95,17 +99,18 @@ class TBRoot
     @dropboxDirCount = 0
     @_indexedDropboxCount = 0
 
+    @dropboxClient = null
+    @trelloClient = null
+
   initTrelloBoardObject: (callback) ->
-    trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
-      boardsWithMatchingName = boards.filter (board) -> 
-        board.name is "TrelloBox" and board.closed is false
+    @trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
+      boardsWithMatchingName = boards.filter (board) => 
+        board.name is "#{@rootName}" and board.closed is false
 
       if boardsWithMatchingName.length == 0
-        callback new Error, null
-        throw new Error "No matching board found!" 
+        return callback(new Error "No matching board found!", null)
       else if boardsWithMatchingName.length > 1
-        callback new Error, null
-        throw new Error "More than one matching board found!"
+        return callback(new Error "More than one matching board found!", null)
       else
         console.log("found one")
 
@@ -167,7 +172,7 @@ class TBRoot
 
 
   indexDropboxDirs: (callback) ->
-    dropboxClient.readdir "/TrelloBox", (err, entries) =>
+    @dbClient.readdir "/#{@rootName}", (err, entries) =>
       dirs = entries.filter (e) -> e.split(".").length == 1
       @dropboxDirCount = dirs.length
 
@@ -177,7 +182,7 @@ class TBRoot
 
 
   indexSingleDropboxDir: (dirName, callback) ->
-    dropboxClient.readdir("/TrelloBox/#{dirName}", (err, entries) =>
+    @dbClient.readdir("/#{@rootName}/#{dirName}", (err, entries) =>
       files = entries.filter (e) -> e.split(".").length == 2
       for file in files
         @dropboxFileIndex[file] = dirName
@@ -235,34 +240,6 @@ class TBRoot
           )
     )
 
-    
-    
-  # syncTrelloToDropbox: (callback) ->
-  #   trelloClient.get("/1/members/chaebacca/boards", (err, boards) =>
-  #     boardsWithMatchingName = boards.filter (board) -> 
-  #       board.name is "TrelloBox" and board.closed is false
-
-  #     if boardsWithMatchingName.length == 0
-  #       throw new Error "No matching board found!" 
-  #     else if boardsWithMatchingName.length > 1
-  #       throw new Error "More than one matching board found!"
-  #     else
-  #       console.log("found one")
-
-  #     matchingBoard = boardsWithMatchingName[0] 
-  #     @trelloBoardObject = matchingBoard
-
-  #     dropboxClient.readdir("/TrelloBox", (err, contents) =>
-  #       for content in contents
-  #         console.log(content.split("."))
-  #         if content.split(".").length is 1  # no extension. therefore a directory
-  #           console.log(content)
-  #           @syncTrelloToDropbox(content)
-  # 
-  #     )
-  #   )
-
-
 
   setUpTrello: ->
     @initTrelloBoardObject((err, boardObject) =>
@@ -290,4 +267,3 @@ class TBRoot
 exports.TBRoot = TBRoot
 exports.TBFile = TBFile
 exports.TBDirectory = TBDirectory
-
