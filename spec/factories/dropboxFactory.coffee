@@ -39,7 +39,22 @@ class TrelloFactory
       closed: false
     return [ board1, board2 ]
 
-      
+  @standardLists: ->
+    list1 =
+      name: "ToDo"
+      id: "abcdef"
+    list2 =
+      name: "JS"
+      id: "ghijk"
+     
+    return [list1, list2]
+  
+  @boardObject: ->
+    board =
+      id: "abc"
+      closed: "false"
+
+    return board
 
 exports.DropboxFactory = DropboxFactory
 exports.TrelloFactory = TrelloFactory

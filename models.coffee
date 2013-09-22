@@ -127,9 +127,7 @@ class TBRoot
       for content in contents
         splitCount = content.split(".").length
         if splitCount is 1
-          tbDir = new TBDirectory(this, content)
-          tbDir.initTrelloList()
-          @tbDirs.push tbDir
+          @tbDirs.push new TBDirectory(this, content)
         else
           @tbFiles.push new TBFile(content)
 
@@ -158,7 +156,7 @@ class TBRoot
     matchingList = list for list in @trelloLists when list.name is listName
 
     if matchingList isnt undefined
-      console.log("Reserved Trello List #{matchingList} already exists!")
+      callback new Error("Reserved Trello List #{matchingList} already exists!")
       return
     else
       @trelloClient.post("/1/boards/#{@trelloBoardObject.id}/lists?name=#{listName}", (err, list) =>
@@ -194,7 +192,7 @@ class TBRoot
         
 
 
-  indexTrelloLists: (callback, lists) ->
+  indexTrelloLists: (callback) ->
     @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
       for list in lists
         @trelloListIndex[list.id] = list.name
@@ -242,7 +240,9 @@ class TBRoot
 
   syncTrello: ->
     @initTrelloBoardObject((err, boardObject) =>
-      @mapDropboxRoot((err, tbDirs, tbFiles) =>)
+      @mapDropboxRoot (err, tbDirs, tbFiles) =>
+        for tbDir in tbDirs
+          tbDirs.initTrelloList()
 
       @allTrelloLists(boardObject.id, (err, lists) =>
         @initReservedTrelloList("Reading List", boardObject.id, (err) ->)
