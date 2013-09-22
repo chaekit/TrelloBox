@@ -1,0 +1,14 @@
+{
+  "name": "TrelloBoxCoffee",
+  "subdomain": "trellobox",
+  "scripts": {
+    "start": "coffee app.coffee"
+  },
+  "dependencies": {
+    "express": "*"
+  },
+  "version": "0.0.0-11",
+  "engines": {
+    "node": "0.8.x"
+  }
+}
