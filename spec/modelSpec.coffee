@@ -24,7 +24,7 @@ describe "TBRoot",  ->
     describe "#indexDropboxDirs", ->
       it "should set @dropboxDirCount", (done) ->
         dirWithAllDirs = DropboxFactory.dirWithAllDirs()
-        @tbRoot.dbClient = DropboxMockClient.readDirFor("/FooBox", dirWithAllDirs)
+        @tbRoot.dropboxClient = DropboxMockClient.readDirFor("/FooBox", dirWithAllDirs)
         @tbRoot.indexDropboxDirs (err,dirs) =>
           numDirs = dirWithAllDirs.length
           expect(@tbRoot.dropboxDirCount).toEqual(numDirs)
@@ -35,7 +35,7 @@ describe "TBRoot",  ->
     describe "#indexSingleDropboxDir", ->
       beforeEach ->
         dirWithAllFiles = DropboxFactory.dirWithAllFiles() # ["abc.txt", "this.js", "ruby.rb", "python.py"]
-        @tbRoot.dbClient = DropboxMockClient.readDirFor("/FooBox/SubFoo1", dirWithAllFiles)
+        @tbRoot.dropboxClient = DropboxMockClient.readDirFor("/FooBox/SubFoo1", dirWithAllFiles)
         @tbRoot.dropboxDirCount = 1
 
       it "should @dropboxFileIndex", (done) ->

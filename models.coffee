@@ -112,7 +112,7 @@ class TBRoot
       else if boardsWithMatchingName.length > 1
         return callback(new Error "More than one matching board found!", null)
       else
-        console.log("found one")
+        console.log("Found Trello Board #{@rootName}")
 
       matchingBoard = boardsWithMatchingName[0] 
      
@@ -123,7 +123,7 @@ class TBRoot
 
 
   mapDropboxRoot: (callback) ->
-    dropboxClient.readdir("/#{@rootName}", (err, contents) =>
+    @dropboxClient.readdir("/#{@rootName}", (err, contents) =>
       for content in contents
         splitCount = content.split(".").length
         if splitCount is 1
@@ -139,7 +139,7 @@ class TBRoot
 
 
   allTrelloLists: (boardId, callback) ->
-    trelloClient.get("/1/boards/#{boardId}/lists", (err, lists) =>
+    @trelloClient.get("/1/boards/#{boardId}/lists", (err, lists) =>
       if err
         console.log(err)
         return
@@ -161,7 +161,7 @@ class TBRoot
       console.log("Reserved Trello List #{matchingList} already exists!")
       return
     else
-      trelloClient.post("/1/boards/#{@trelloBoardObject.id}/lists?name=#{listName}", (err, list) =>
+      @trelloClient.post("/1/boards/#{@trelloBoardObject.id}/lists?name=#{listName}", (err, list) =>
         if err
           console.log(err)
           return
@@ -172,7 +172,7 @@ class TBRoot
 
 
   indexDropboxDirs: (callback) ->
-    @dbClient.readdir "/#{@rootName}", (err, entries) =>
+    @dropboxClient.readdir "/#{@rootName}", (err, entries) =>
       dirs = entries.filter (e) -> e.split(".").length == 1
       @dropboxDirCount = dirs.length
 
@@ -182,7 +182,7 @@ class TBRoot
 
 
   indexSingleDropboxDir: (dirName, callback) ->
-    @dbClient.readdir("/#{@rootName}/#{dirName}", (err, entries) =>
+    @dropboxClient.readdir("/#{@rootName}/#{dirName}", (err, entries) =>
       files = entries.filter (e) -> e.split(".").length == 2
       for file in files
         @dropboxFileIndex[file] = dirName
@@ -195,7 +195,7 @@ class TBRoot
 
 
   indexTrelloLists: (callback, lists) ->
-    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
+    @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
       for list in lists
         @trelloListIndex[list.id] = list.name
 
@@ -205,7 +205,7 @@ class TBRoot
 
 
   processTrelloCards: (callback) ->
-    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
+    @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
 
       for tbfile in cards
         tbFileListName = @trelloListIndex[tbfile.idList]
@@ -225,8 +225,7 @@ class TBRoot
 
 
   mapAllTBFiles: ->
-    trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
-      console.log("wt")
+    @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
       for tbfile in cards
         tbFileListName = @trelloListIndex[tbfile.idList]
         tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
@@ -241,7 +240,7 @@ class TBRoot
     )
 
 
-  setUpTrello: ->
+  syncTrello: ->
     @initTrelloBoardObject((err, boardObject) =>
       @mapDropboxRoot((err, tbDirs, tbFiles) =>)
 
@@ -252,7 +251,7 @@ class TBRoot
     )
 
     
-  syncTrelloToDropbox: ->
+  syncDropbox: ->
     @initTrelloBoardObject((err, boardObject) =>
       @indexTrelloLists((err, lists) =>
         @indexDropboxDirs((err, directories) =>
