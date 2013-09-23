@@ -36,20 +36,24 @@ task "getBoardId", "retreives boardId", ->
 
 
 task "webhook:setup", "Set up Trello webhook for the board", ->
-  authToken = nconf.get("TRELLO_TOKEN")
-  appKey = nconf.get("TRELLO_APP_KEY")
-  url = "https://trello.com/1/tokens/#{authToken}/webhooks/?key=#{appKey}"
-  form = 
-    idModel: '5233ea42c581c36a5b001d17'
-    callbackURL: 'http://trellobox.nodejitsu.com/trellowebhook'
-    description: 'webhook for TrellBox'
-  req = 
-    url: url
-    form: form
+  tbRoot = new TBRoot("TrelloBox")
+  tbRoot.trelloClient = trelloClient
+  tbRoot.initTrelloBoardObject (err, board) ->
+    console.log board.id
+    authToken = nconf.get("TRELLO_TOKEN")
+    appKey = nconf.get("TRELLO_APP_KEY")
+    url = "https://trello.com/1/tokens/#{authToken}/webhooks/?key=#{appKey}"
+    form = 
+      idModel: board.id
+      callbackURL: nconf.get("WEBHOOK_CALLBACK_URL")
+      description: 'webhook for TrellBox'
+    req = 
+      url: url
+      form: form
 
-  request.post req, (err, response, body) ->
-    if err
-      console.log(err)
-      return
+    request.post req, (err, response, body) ->
+      if err
+        console.log(err)
+        return
 
-    console.log(body) 
+      console.log(body) 

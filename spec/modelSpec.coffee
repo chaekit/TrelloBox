@@ -118,8 +118,21 @@ describe "TBRoot",  ->
           done()
       
     
+  describe "class methods", ->
+    describe "#moveDropboxFile(fileName, oldList, newList, callback)", ->
+      it "should pass an Error with missing destination directry name", (done) ->
+        dbDirs = DropboxFactory.dirWithAllDirs() # Javascripts, Ruby, Hello\ World
+        @tbRoot.dropboxClient = DropboxMockClient.readDirFor("/FooBox", dbDirs)
+        @tbRoot.moveDropboxFile "abc.txt", "Javascripts", "Python", (err, stat) =>
+          expect(err.message).toEqual("Python does not exist on Dropbox")
+          done()
 
-
+      it "should pass an Error with missing source directry name", (done) ->
+        dbDirs = DropboxFactory.dirWithAllDirs() # Javascripts, Ruby, Hello\ World
+        @tbRoot.dropboxClient = DropboxMockClient.readDirFor("/FooBox", dbDirs)
+        @tbRoot.moveDropboxFile "abc.txt", "Python", "Javascripts", (err, stat) =>
+          expect(err.message).toEqual("Python does not exist on Dropbox")
+          done()
 
 
 

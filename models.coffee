@@ -2,11 +2,8 @@ nconf = require('nconf').file({ file: "./config.json" })
 apiClient = require("./client")
 async = require 'async'
 
-if process.env.PROJECT_ENV is "TEST"
-  dropboxClient = apiClient.mockDropboxClient()
-else
-  dropboxClient =  apiClient.dropboxClient(nconf)
-  trelloClient = apiClient.trelloClient(nconf)
+dropboxClient =  apiClient.dropboxClient(nconf)
+trelloClient = apiClient.trelloClient(nconf)
 
 class TBFile
   constructor: (tbDirectory, fileName) ->
@@ -107,10 +104,12 @@ class TBRoot
       boardsWithMatchingName = boards.filter (board) => 
         board.name is "#{@rootName}" and board.closed is false
 
-      if boardsWithMatchingName.length == 0
-        return callback(new Error "No matching board found!", null)
+      if boardsWithMatchingName.length is 0
+        callback(new Error "No matching board found!", null)
+        return
       else if boardsWithMatchingName.length > 1
-        return callback(new Error "More than one matching board found!", null)
+        callback(new Error "More than one matching board found!", null)
+        return
       else
         console.log("Found Trello Board #{@rootName}")
 
@@ -210,8 +209,8 @@ class TBRoot
         tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
 
         if tbFileListName isnt tbFileDropboxDirName and tbFileDropboxDirName isnt undefined
-          oldDropboxPath = "/TrelloBox/#{tbFileDropboxDirName}/#{tbfile.name}"
-          newDropboxPath = "/TrelloBox/#{tbFileListName}/#{tbfile.name}"
+          oldDropboxPath = "/#{@rootName}/#{tbFileDropboxDirName}/#{tbfile.name}"
+          newDropboxPath = "/#{@rootName}/#{tbFileListName}/#{tbfile.name}"
           dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
             if err
               console.log(err)
@@ -229,22 +228,48 @@ class TBRoot
         tbFileDropboxDirName = @dropboxFileIndex[tbfile.name]
 
         if tbFileListName isnt tbFileDropboxDirName and tbFileDropboxDirName isnt undefined
-          oldDropboxPath = "/TrelloBox/#{tbFileDropboxDirName}/#{tbfile.name}"
-          newDropboxPath = "/TrelloBox/#{tbFileListName}/#{tbfile.name}"
+          oldDropboxPath = "/#{@rootName}/#{tbFileDropboxDirName}/#{tbfile.name}"
+          newDropboxPath = "/#{@rootName}/#{tbFileListName}/#{tbfile.name}"
 
-          dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
+          @dropboxClient.move(oldDropboxPath, newDropboxPath, (err, stat)->
             console.log(stat)
           )
     )
+
+  moveDropboxFile: (fileName, oldList, newList, callback) ->
+    @dropboxClient.readdir "/#{@rootName}", (err, entries) =>
+      entryIndex = new Array()
+      for entry in entries
+        entryIndex[entry] = true
+
+      dirForOldListExists = entryIndex[oldList]
+      dirForNewListExists = entryIndex[newList]
+
+      unless dirForOldListExists
+        return callback(new Error("#{oldList} does not exist on Dropbox"), undefined)
+        
+      unless dirForNewListExists
+        return callback new Error("#{newList} does not exist on Dropbox"), undefined
+
+      if dirForOldListExists and dirForNewListExists
+        oldPath = "#{@rootName}/#{oldList}/#{fileName}"
+        newPath = "#{@rootName}/#{newList}/#{fileName}"
+
+        @dropboxClient.move oldPath, newPath, (err, stat) ->
+          callback err, stat
+      
 
 
   syncTrello: ->
     @initTrelloBoardObject((err, boardObject) =>
       @mapDropboxRoot (err, tbDirs, tbFiles) =>
         for tbDir in tbDirs
-          tbDirs.initTrelloList()
+          tbDir.initTrelloList()
 
       @allTrelloLists(boardObject.id, (err, lists) =>
+        if err
+          console.log(err)
+          return
         @initReservedTrelloList("Reading List", boardObject.id, (err) ->)
         @initReservedTrelloList("Favorites", boardObject.id, (err) ->)
       )

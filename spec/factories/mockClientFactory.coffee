@@ -26,5 +26,10 @@ class DropboxMockClient
       calls(1, [undefined, callbackParams])  
 
 
+  @moveFile: (oldPath, newPath, callbackParam) ->
+    return nodemock.mock("move").
+      takes(oldPath, newPath, ->).
+      calls(2, [undefined, callbackParam])
+
 exports.TrelloMockClient = TrelloMockClient
 exports.DropboxMockClient = DropboxMockClient
