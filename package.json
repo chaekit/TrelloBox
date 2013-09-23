@@ -13,7 +13,7 @@
     "async": "*",
     "coffee": "*"
   },
-  "version": "0.0.0-18",
+  "version": "0.0.0-26",
   "engines": {
     "node": "0.8.x"
   }
