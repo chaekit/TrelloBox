@@ -169,6 +169,7 @@ class TBRoot
 
 
   indexDropboxDirs: (callback) ->
+    console.log("indexing dropbox directories.")
     @dropboxClient.readdir "/#{@rootName}", (err, entries) =>
       dirs = entries.filter (e) -> e.split(".").length == 1
       @dropboxDirCount = dirs.length
@@ -192,6 +193,7 @@ class TBRoot
 
 
   indexTrelloLists: (callback) ->
+    console.log("indexing Trello lists")
     @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/lists", (err, lists) =>
       for list in lists
         @trelloListIndex[list.id] = list.name
@@ -222,6 +224,7 @@ class TBRoot
 
 
   mapAllTBFiles: ->
+    console.log("mapping all TrelloBox files")
     @trelloClient.get("/1/boards/#{@trelloBoardObject.id}/cards", (err, cards) =>
       for tbfile in cards
         tbFileListName = @trelloListIndex[tbfile.idList]
@@ -277,16 +280,20 @@ class TBRoot
 
     
   syncDropbox: ->
-    @initTrelloBoardObject((err, boardObject) =>
-      @indexTrelloLists((err, lists) =>
-        @indexDropboxDirs((err, directories) =>
-          for dir in directories
-            @indexSingleDropboxDir(dir, (err) =>
-              @mapAllTBFiles()
-            )
-        )
-      )
-    )
+    async.waterfall [
+      (callback) =>
+        @initTrelloBoardObject (err, boardObject) => callback(err, boardObject),
+
+      (boardObject, callback) =>
+        @indexTrelloLists (err, lists) => callback(err),
+
+      (callback) =>
+        @indexDropboxDirs (err, directories) => callback(err, directories),
+
+      (directories, callback) =>
+        for dir in directories
+          @indexSingleDropboxDir dir, (err) => @mapAllTBFiles()
+    ]
 
 exports.TBRoot = TBRoot
 exports.TBFile = TBFile
