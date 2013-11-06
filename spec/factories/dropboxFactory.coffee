@@ -1,10 +1,28 @@
 class DropboxFactory
   @dirWithAllFiles: ->
     return [
-      "abc.txt",
-      "this.js",
-      "ruby.rb",
-      "python.py",
+      {
+        name: "abc.txt",
+        isFile: true
+        isFolder: false
+      },
+
+      {
+        name: "this.js",
+        isFile: true
+        isFolder: false
+      },
+      {
+        name: 'python.py'
+        isFile: true
+        isFolder: false
+      },
+      {
+        name: 'ruby.rb'
+        isFile: true
+        isFolder: false
+      },
+
     ]
 
   @dirWithAllDirs: ->
@@ -16,10 +34,26 @@ class DropboxFactory
   
   @dirWithFileAndDir: ->
     return [
-      "abc.txt",
-      "this.js",
-      "ruby",
-      "python"
+      {
+        name: "abc.txt"
+        isFile: true
+        isFolder: false
+      },
+      {
+        name: "this.js"
+        isFile: true
+        isFolder: false
+      },
+      {
+        name: "ruby"
+        isFile: false
+        isFolder: true
+      },
+      {
+        name: "python"
+        isFile: false
+        isFolder: true
+      },
     ]
 
   @rootDirEntries: -> 
@@ -28,6 +62,10 @@ class DropboxFactory
       "SubFoo 2",
       "SubFoo 3"
     ]
+
+
+
+
 
 class TrelloFactory
   @boardEntries: ->
@@ -46,8 +84,23 @@ class TrelloFactory
     list2 =
       name: "JS"
       id: "ghijk"
+    list3 =
+      name: 'ruby'
+      id: 'rubyid'
      
-    return [list1, list2]
+    return [list1, list2, list3]
+  
+  @allCards: ->
+    card1 =
+      name: 'Learning JS'
+      idList: 'abcdef'
+    card2 =
+      name: 'Learning RUby'
+      idList: 'ghijk'
+    card3 =
+      name: 'Learning Python'
+      idList: 'rubyid'
+    return [card1, card2, card3]
   
   @boardObject: ->
     board =

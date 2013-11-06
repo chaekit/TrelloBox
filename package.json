@@ -11,7 +11,9 @@
     "nconf": "*",
     "dropbox-node": "*",
     "async": "*",
-    "coffee": "*"
+    "coffee": "*",
+    "redis": "0.9.0",
+    "coffee-trace": "1.3.4"
   },
   "version": "0.0.0-26",
   "engines": {
