@@ -1,55 +1,23 @@
-express = require("express")
-http = require("http")
-path = require("path")
-nconf = require "nconf"
-crypto = require 'crypto'
+express         = require("express")
+http            = require("http")
+path            = require("path")
+nconf           = require "nconf"
+crypto          = require 'crypto'
+Syncer          = require './lib/syncer'
+Trello          = require "node-trello"
+Dropbox         = require "dropbox"
 
 
-Trello = require "node-trello"
-Dropbox = require "dropbox"
-
-
-TBModel = require "./models"
-TBRoot = TBModel.TBRoot
-
-if process.env.NODE_ENV is "production"
-  TRELLO_APP_KEY = process.env.TRELLO_APP_KEY
-  TRELLO_APP_SECRET = process.env.TRELLO_APP_SECRET
-  DROPBOX_APP_KEY = process.env.DROPBOX_APP_KEY
-  DROPBOX_APP_SECRET = process.env.DROPBOX_APP_SECRET
-  DROPBOX_TOKEN = process.env.DROPBOX_TOKEN
-  WEBHOOK_CALLBACK_URL = process.env.WEBHOOK_CALLBACK_URL 
-else
-  nconf.file({ file: "./config.json" })
-  TRELLO_APP_KEY = nconf.get("TRELLO_APP_KEY")
-  TRELLO_APP_SECRET = nconf.get("TRELLO_APP_SECRET")  
-  DROPBOX_APP_KEY = nconf.get("DROPBOX_APP_KEY")  
-  DROPBOX_APP_SECRET = nconf.get("DROPBOX_APP_SECRET")
-  DROPBOX_TOKEN = nconf.get("DROPBOX_TOKEN")
-  WEBHOOK_CALLBACK_URL = nconf.get("WEBHOOK_CALLBACK_URL")
-
-trelloClient = new Trello(TRELLO_APP_KEY, TRELLO_APP_SECRET)
- 
-dropboxClient = new Dropbox.Client(
-  key: DROPBOX_APP_KEY
-  secret: DROPBOX_APP_SECRET
-  token: DROPBOX_TOKEN
-)
-
-
+nconf.file({ file: './config.json' })
 trelloClient = new Trello(nconf.get("TRELLO_APP_KEY"), nconf.get("TRELLO_APP_SECRET"))
  
-dropboxClient = new Dropbox.Client(
+dropboxClient = new Dropbox.Client
   key: nconf.get("DROPBOX_APP_KEY")
   secret: nconf.get("DROPBOX_APP_SECRET")
   token: nconf.get("DROPBOX_TOKEN")
-)
 
-
-
-tbRoot = new TBRoot("TrelloBox")
-tbRoot.trelloClient = trelloClient
-tbRoot.dropboxClient = dropboxClient
+Syncer.trelloClient = trelloClient
+Syncer.dropboxClient = dropboxClient
 
 app = express()
 
@@ -78,11 +46,11 @@ app.post '/trellowebhook', (req, res)->
     newDir = trelloAction["listAfter"]["name"]
     fileName = trelloAction["card"]["name"]
 
-    if oldDir isnt undefined and newDir isnt undefined
-      tbRoot.moveDropboxFile fileName, oldDir, newDir, (err, stat) ->
-        if err then return console.log(err)
+    # if oldDir isnt undefined and newDir isnt undefined
+    #   tbRoot.moveDropboxFile fileName, oldDir, newDir, (err, stat) ->
+    #     if err then return console.log(err)
 
-        console.log(stat)
+    #     console.log(stat)
     res.send 200
   else
     res.send 403

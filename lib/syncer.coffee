@@ -1,15 +1,12 @@
 require 'coffee-trace'
 
-nconf             = require('nconf').file({ file: "./config.json" })
-apiClient         = require("../client")
 async             = require 'async'
 redisClient       = require './redisClient'
-dropboxClient     = apiClient.dropboxClient(nconf)
-trelloClient      = apiClient.trelloClient(nconf)
 _                 = require 'underscore'
 config            = require '../config'
 rootName          = config.trelloBoxName
 boardId           = config.boardId
+
 
 class Syncer
   @dropboxClient: null
@@ -20,7 +17,6 @@ class Syncer
     @dropboxClient.readdir "/#{rootName}", (err, contents) =>
       if err then return callback(err)
 
-      # console.log('TrelloBox contents ', contents.json().contents)
       console.log('TrelloBox contents ', contents)
       directories = _.filter contents, (content) -> 
         content.split(".").length is 1
